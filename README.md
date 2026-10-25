@@ -4,7 +4,7 @@ Daily fare check for a DC → Los Angeles → Orlando → DC trip for 2 adults (
 
 - `fares/config.json`: legs, airports, flexible date windows, red-eye window, nonstop rule.
 - `fares/bag_fees.json`: estimated carry-on, checked bag and seat fees per airline.
-- `fares/fetch_fares.py`: searches Google Flights through SerpApi (17 searches a run, basic economy excluded) and writes the dashboard's data files to `fares/out/`.
+- `fares/fetch_fares.py`: searches Google Flights through SerpApi (15 searches a run: nonstops only, no basic economy) and writes the dashboard's data files to `fares/out/`.
 - `data/history.json`: one row per series per daily run, used for the price trend.
 
 ```sh

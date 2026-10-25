@@ -2,9 +2,9 @@
 """Daily fare check for the DC -> LA -> Orlando -> DC holiday trip.
 
 Calls SerpApi's Google Flights engine once per leg and date, with every
-airport of a leg in the same call, so a full run costs 17 searches: 16 date
-searches and 1 multi-city price on American, Delta and United. Basic economy
-is excluded, so every fare includes a carry-on and standard seat selection.
+airport of a leg in the same call, so a full run costs one search per date
+plus 1 multi-city price on American, Delta and United. Nonstop flights only
+and no basic economy, so every fare includes a carry-on and standard seat.
 
 Writes the dashboard's data files to fares/out/ and appends to
 data/history.json. Raw answers are cached per day in fares/cache/, so a
@@ -34,6 +34,8 @@ ENDPOINT = "https://serpapi.com/search.json"
 CONFIG = json.loads((ROOT / "config.json").read_text())
 BAGS = {b["airline"]: b for b in json.loads((ROOT / "bag_fees.json").read_text())}
 ADULTS = CONFIG["adults"]
+STOPS = 1 if CONFIG.get("nonstop_only") else 2  # SerpApi: 1 = nonstop only, 2 = up to 1 stop
+MIN_SAVING_2 = CONFIG.get("one_stop_min_saving_pp", 0) * ADULTS
 
 
 def ssl_context():
@@ -139,7 +141,7 @@ def leg_rows(searcher, leg):
     rows = []
     for date in leg["dates"]:
         params = {"type": 2, "departure_id": leg["from"], "arrival_id": leg["to"],
-                  "outbound_date": date, "stops": 2, "sort_by": 2, "exclude_basic": "true"}
+                  "outbound_date": date, "stops": STOPS, "sort_by": 2, "exclude_basic": "true"}
         if leg.get("outbound_times"):
             params["outbound_times"] = leg["outbound_times"]
         found = parse_options(searcher.search(**params), leg, date, "main")
@@ -165,7 +167,7 @@ def finish(row, leg, rank=None):
 def run_test(searcher):
     leg = CONFIG["legs"][0]
     body = searcher.search(type=2, departure_id=leg["from"], arrival_id=leg["to"],
-                           outbound_date=leg["preferred"][0], stops=2, sort_by=2, exclude_basic="true")
+                           outbound_date=leg["preferred"][0], stops=STOPS, sort_by=2, exclude_basic="true")
     rows = parse_options(body, leg, leg["preferred"][0], "main")
     print(f"Test search {leg['from']} -> {leg['to']} on {leg['preferred'][0]}: {len(rows)} options, {searcher.calls} API call(s)")
     for r in sorted(rows, key=lambda r: r["price_2"])[:8]:
@@ -187,7 +189,7 @@ def main():
         run_test(searcher)
         return
 
-    min_saving_2 = CONFIG["one_stop_min_saving_pp"] * ADULTS
+    min_saving_2 = MIN_SAVING_2
     grid, top, best_by_leg = [], [], {}
     for leg in CONFIG["legs"]:
         rows = leg_rows(searcher, leg)
@@ -230,7 +232,7 @@ def best_value_pick(leg, rows, min_saving_2):
 
 def build_itineraries(searcher, best_by_leg, now):
     legs = CONFIG["legs"]
-    min_saving_2 = CONFIG["one_stop_min_saving_pp"] * ADULTS
+    min_saving_2 = MIN_SAVING_2
     out = []
 
     def add(kind, label, picks):
@@ -261,7 +263,7 @@ def build_itineraries(searcher, best_by_leg, now):
             if leg.get("outbound_times"):
                 seg["times"] = leg["outbound_times"]
             segments.append(seg)
-        body = searcher.search(type=3, multi_city_json=json.dumps(segments), stops=2, sort_by=2,
+        body = searcher.search(type=3, multi_city_json=json.dumps(segments), stops=STOPS, sort_by=2,
                                exclude_basic="true", include_airlines=CONFIG["multi_city_airlines"])
         prices = [i for i in body.get("best_flights", []) + body.get("other_flights", []) if i.get("price")]
         if prices:

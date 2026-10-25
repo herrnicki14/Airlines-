@@ -1,7 +1,7 @@
 {
   "adults": 2,
   "currency": "USD",
-  "one_stop_min_saving_pp": 75,
+  "nonstop_only": true,
   "legs": [
     {
       "id": "leg1",
