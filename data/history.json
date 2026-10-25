@@ -2,31 +2,31 @@
  {
   "run_date": "2026-10-25",
   "series": "cheapest",
-  "total_2": 1277
+  "total_2": 1517
  },
  {
   "run_date": "2026-10-25",
   "series": "best_value",
-  "total_2": 1876
+  "total_2": 2163
  },
  {
   "run_date": "2026-10-25",
   "series": "multi_city",
-  "total_2": 1677
+  "total_2": 1901
  },
  {
   "run_date": "2026-10-25",
   "series": "leg1",
-  "total_2": 417
+  "total_2": 500
  },
  {
   "run_date": "2026-10-25",
   "series": "leg2",
-  "total_2": 470
+  "total_2": 527
  },
  {
   "run_date": "2026-10-25",
   "series": "leg3",
-  "total_2": 390
+  "total_2": 490
  }
 ]

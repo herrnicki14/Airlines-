@@ -1,10 +1,66 @@
 [
-  {"airline": "American", "carry_on_pp": 0, "checked_pp": 45, "basic_carry_on": true, "note": "First bag $45 prepaid online, $50 at airport (April 2026 change). Basic economy may add about $5."},
-  {"airline": "Delta", "carry_on_pp": 0, "checked_pp": 45, "basic_carry_on": true, "note": "First bag about $45 prepaid, $50 at airport; sources disagree."},
-  {"airline": "United", "carry_on_pp": 0, "checked_pp": 45, "basic_carry_on": false, "note": "First bag $45 online, $50 at airport. Basic economy allows a personal item only, so a carry-on means buying Economy."},
-  {"airline": "Alaska", "carry_on_pp": 0, "checked_pp": 35, "basic_carry_on": true, "note": "First bag $35."},
-  {"airline": "JetBlue", "carry_on_pp": 0, "checked_pp": 45, "basic_carry_on": true, "note": "Estimate; check jetblue.com before booking."},
-  {"airline": "Southwest", "carry_on_pp": 0, "checked_pp": 40, "basic_carry_on": true, "note": "Free bags ended May 28, 2025; sources give $35 to $45."},
-  {"airline": "Spirit", "carry_on_pp": 65, "checked_pp": 60, "basic_carry_on": false, "note": "Carry-on and checked bag priced by route and date; estimate only."},
-  {"airline": "Frontier", "carry_on_pp": 65, "checked_pp": 60, "basic_carry_on": false, "note": "Carry-on and checked bag priced by route and date; estimate only."}
+ {
+  "airline": "American",
+  "carry_on_pp": 0,
+  "checked_pp": 45,
+  "note": "First bag $45 prepaid online, $50 at airport (April 2026 change).",
+  "seat_pp": 0,
+  "seat_note": "Standard seat selection included with non-basic fares; preferred and extra-legroom seats cost more."
+ },
+ {
+  "airline": "Delta",
+  "carry_on_pp": 0,
+  "checked_pp": 45,
+  "note": "First bag about $45 prepaid, $50 at airport; sources disagree.",
+  "seat_pp": 0,
+  "seat_note": "Standard seat selection included with non-basic fares; preferred and extra-legroom seats cost more."
+ },
+ {
+  "airline": "United",
+  "carry_on_pp": 0,
+  "checked_pp": 45,
+  "note": "First bag $45 online, $50 at airport (April 2026 change).",
+  "seat_pp": 0,
+  "seat_note": "Standard seat selection included with non-basic fares; preferred and extra-legroom seats cost more."
+ },
+ {
+  "airline": "Alaska",
+  "carry_on_pp": 0,
+  "checked_pp": 35,
+  "note": "First bag $35.",
+  "seat_pp": 0,
+  "seat_note": "Standard seat selection included with non-basic fares; preferred and extra-legroom seats cost more."
+ },
+ {
+  "airline": "JetBlue",
+  "carry_on_pp": 0,
+  "checked_pp": 45,
+  "note": "Estimate; check jetblue.com before booking.",
+  "seat_pp": 0,
+  "seat_note": "Standard seat selection included with non-basic fares; preferred and extra-legroom seats cost more."
+ },
+ {
+  "airline": "Southwest",
+  "carry_on_pp": 0,
+  "checked_pp": 40,
+  "note": "Free bags ended May 28, 2025; sources give $35 to $45.",
+  "seat_pp": 0,
+  "seat_note": "Assigned seating since Jan 2026; standard seat selection included on Choice fares and up."
+ },
+ {
+  "airline": "Spirit",
+  "carry_on_pp": 65,
+  "checked_pp": 60,
+  "note": "Carry-on and checked bag priced by route and date; estimate only.",
+  "seat_pp": 25,
+  "seat_note": "Seat selection is extra on every Spirit fare; estimate."
+ },
+ {
+  "airline": "Frontier",
+  "carry_on_pp": 65,
+  "checked_pp": 60,
+  "note": "Carry-on and checked bag priced by route and date; estimate only.",
+  "seat_pp": 25,
+  "seat_note": "Seat selection is extra on every Frontier fare; estimate."
+ }
 ]

@@ -2,9 +2,9 @@
 """Daily fare check for the DC -> LA -> Orlando -> DC holiday trip.
 
 Calls SerpApi's Google Flights engine once per leg and date, with every
-airport of a leg in the same call, so a full run costs about 20 searches:
-16 date searches, 3 Main Cabin (no basic economy) checks on each leg's
-cheapest date, and 1 multi-city price on American, Delta and United.
+airport of a leg in the same call, so a full run costs 17 searches: 16 date
+searches and 1 multi-city price on American, Delta and United. Basic economy
+is excluded, so every fare includes a carry-on and standard seat selection.
 
 Writes the dashboard's data files to fares/out/ and appends to
 data/history.json. Raw answers are cached per day in fares/cache/, so a
@@ -34,7 +34,6 @@ ENDPOINT = "https://serpapi.com/search.json"
 CONFIG = json.loads((ROOT / "config.json").read_text())
 BAGS = {b["airline"]: b for b in json.loads((ROOT / "bag_fees.json").read_text())}
 ADULTS = CONFIG["adults"]
-BASIC_CARRIERS = {"American", "Delta", "United"}
 
 
 def ssl_context():
@@ -103,9 +102,7 @@ def parse_options(body, leg, date, fare):
 
 
 def fare_label(row):
-    if row["fare"] == "main":
-        return "Main Cabin / Economy"
-    return "Lowest (likely Basic)" if row["airline"] in BASIC_CARRIERS else "Lowest fare"
+    return "Main Cabin / Economy (no basic)"
 
 
 def bag_cost_2(row):
@@ -113,14 +110,18 @@ def bag_cost_2(row):
     fees = BAGS.get(row["airline"])
     if not fees:
         return None, "Bag fees unknown for this airline"
-    note = ""
-    if row["fare"] == "lowest" and not fees["basic_carry_on"] and not fees["carry_on_pp"]:
-        note = "Basic fare has no carry-on; buy Main Cabin for one"
-    return ADULTS * (fees["carry_on_pp"] + fees["checked_pp"]), note
+    return ADULTS * (fees["carry_on_pp"] + fees["checked_pp"]), ""
+
+
+def seat_cost_2(row):
+    """Standard seat selection for both travellers on this flight."""
+    fees = BAGS.get(row["airline"])
+    return ADULTS * fees["seat_pp"] if fees else None
 
 
 def with_bags(row):
-    return row["price_2"] + (bag_cost_2(row)[0] or 0)
+    """Fare plus bags and seats for both travellers."""
+    return row["price_2"] + (bag_cost_2(row)[0] or 0) + (seat_cost_2(row) or 0)
 
 
 def best_for_date(rows, min_saving_2):
@@ -138,30 +139,23 @@ def leg_rows(searcher, leg):
     rows = []
     for date in leg["dates"]:
         params = {"type": 2, "departure_id": leg["from"], "arrival_id": leg["to"],
-                  "outbound_date": date, "stops": 2, "sort_by": 2}
+                  "outbound_date": date, "stops": 2, "sort_by": 2, "exclude_basic": "true"}
         if leg.get("outbound_times"):
             params["outbound_times"] = leg["outbound_times"]
-        found = parse_options(searcher.search(**params), leg, date, "lowest")
+        found = parse_options(searcher.search(**params), leg, date, "main")
         if leg.get("redeye"):
             found = [r for r in found if r["redeye"]]
         rows += found
     return rows
 
 
-def main_cabin_rows(searcher, leg, date):
-    params = {"type": 2, "departure_id": leg["from"], "arrival_id": leg["to"],
-              "outbound_date": date, "stops": 2, "sort_by": 2, "exclude_basic": "true"}
-    if leg.get("outbound_times"):
-        params["outbound_times"] = leg["outbound_times"]
-    found = parse_options(searcher.search(**params), leg, date, "main")
-    return [r for r in found if r["redeye"]] if leg.get("redeye") else found
-
-
 def finish(row, leg, rank=None):
     bags, note = bag_cost_2(row)
+    seats = seat_cost_2(row)
+    total = with_bags(row)
     out = {**row, "leg_label": leg["label"], "fare": fare_label(row),
-           "bags_2": bags, "total_2": row["price_2"] + (bags or 0),
-           "total_pp": round((row["price_2"] + (bags or 0)) / ADULTS, 2),
+           "bags_2": bags, "seats_2": seats, "total_2": total,
+           "total_pp": round(total / ADULTS, 2),
            "preferred_date": row["date"] in leg["preferred"], "note": note}
     if rank is not None:
         out["rank"] = rank
@@ -171,8 +165,8 @@ def finish(row, leg, rank=None):
 def run_test(searcher):
     leg = CONFIG["legs"][0]
     body = searcher.search(type=2, departure_id=leg["from"], arrival_id=leg["to"],
-                           outbound_date=leg["preferred"][0], stops=2, sort_by=2)
-    rows = parse_options(body, leg, leg["preferred"][0], "lowest")
+                           outbound_date=leg["preferred"][0], stops=2, sort_by=2, exclude_basic="true")
+    rows = parse_options(body, leg, leg["preferred"][0], "main")
     print(f"Test search {leg['from']} -> {leg['to']} on {leg['preferred'][0]}: {len(rows)} options, {searcher.calls} API call(s)")
     for r in sorted(rows, key=lambda r: r["price_2"])[:8]:
         print(f"  ${r['price_2']:>5}  {r['airline']:<20} {r['flights']:<18} {r['route']:<12} {r['depart']}-{r['arrive']}  stops={r['stops']}")
@@ -213,11 +207,6 @@ def main():
                 per_date.append(pick)
         ranked = sorted(per_date, key=with_bags)[:3]
         top += [finish(r, leg, i + 1) for i, r in enumerate(ranked)]
-        if ranked:
-            main = main_cabin_rows(searcher, leg, ranked[0]["date"])
-            pick = best_for_date(main, min_saving_2)
-            if pick:
-                top.append(finish(pick, leg, "Main"))
         best_by_leg[leg["id"]] = {"rows": rows, "ranked": ranked}
 
     itineraries = build_itineraries(searcher, best_by_leg, now)
@@ -254,6 +243,7 @@ def build_itineraries(searcher, best_by_leg, now):
                for leg, r in zip(legs, rows)},
             "fare_2": sum(r["price_2"] for r in rows),
             "bags_2": sum(r["bags_2"] or 0 for r in rows),
+            "seats_2": sum(r["seats_2"] or 0 for r in rows),
             "total_2": sum(r["total_2"] for r in rows),
             "total_pp": round(sum(r["total_2"] for r in rows) / ADULTS, 2),
         })
@@ -271,22 +261,23 @@ def build_itineraries(searcher, best_by_leg, now):
             if leg.get("outbound_times"):
                 seg["times"] = leg["outbound_times"]
             segments.append(seg)
-        body = searcher.search(type=3, multi_city_json=json.dumps(segments), stops=2,
-                               sort_by=2, include_airlines=CONFIG["multi_city_airlines"])
+        body = searcher.search(type=3, multi_city_json=json.dumps(segments), stops=2, sort_by=2,
+                               exclude_basic="true", include_airlines=CONFIG["multi_city_airlines"])
         prices = [i for i in body.get("best_flights", []) + body.get("other_flights", []) if i.get("price")]
         if prices:
             best = min(prices, key=lambda i: i["price"])
             carriers = sorted({s.get("airline", "") for s in best.get("flights", [])})
             fees = BAGS.get(carriers[0]) if len(carriers) == 1 else None
             bags = ADULTS * 3 * (fees["carry_on_pp"] + fees["checked_pp"]) if fees else None
+            seats = ADULTS * 3 * fees["seat_pp"] if fees else None
             one_ways = sum(c["price_2"] for c in cheapest)
             out.append({
                 "kind": "multi_city", "label": f"Multi-city on {' + '.join(carriers)}",
                 "leg1": f"{cheapest[0]['date']} · first flight {best['flights'][0].get('flight_number', '')}",
                 "leg2": cheapest[1]["date"], "leg3": cheapest[2]["date"],
-                "fare_2": best["price"], "bags_2": bags,
-                "total_2": best["price"] + (bags or 0),
-                "total_pp": round((best["price"] + (bags or 0)) / ADULTS, 2),
+                "fare_2": best["price"], "bags_2": bags, "seats_2": seats,
+                "total_2": best["price"] + (bags or 0) + (seats or 0),
+                "total_pp": round((best["price"] + (bags or 0) + (seats or 0)) / ADULTS, 2),
                 "vs_one_ways_2": best["price"] - one_ways,
             })
     return out
