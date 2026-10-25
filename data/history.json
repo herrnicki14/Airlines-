@@ -1,0 +1,32 @@
+[
+ {
+  "run_date": "2026-10-25",
+  "series": "cheapest",
+  "total_2": 1204
+ },
+ {
+  "run_date": "2026-10-25",
+  "series": "best_value",
+  "total_2": 1795
+ },
+ {
+  "run_date": "2026-10-25",
+  "series": "multi_city",
+  "total_2": 1778
+ },
+ {
+  "run_date": "2026-10-25",
+  "series": "leg1",
+  "total_2": 417
+ },
+ {
+  "run_date": "2026-10-25",
+  "series": "leg2",
+  "total_2": 470
+ },
+ {
+  "run_date": "2026-10-25",
+  "series": "leg3",
+  "total_2": 317
+ }
+]

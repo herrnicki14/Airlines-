@@ -203,6 +203,7 @@ def main():
             nonstop = min((r["price_2"] for r in day if r["stops"] == 0), default=None)
             grid.append({"leg": leg["id"], "leg_label": leg["label"], "date": date,
                          "best_price_2": pick["price_2"] if pick else None,
+                         "best_total_2": with_bags(pick) if pick else None,
                          "nonstop_price_2": nonstop,
                          "airline": pick["airline"] if pick else None,
                          "stops": pick["stops"] if pick else None,
@@ -304,7 +305,7 @@ def write_outputs(now, grid, top, itineraries):
     for it in itineraries:
         history.append({"run_date": day, "series": it["kind"], "total_2": it["total_2"]})
     for leg in CONFIG["legs"]:
-        prices = [g["best_price_2"] for g in grid if g["leg"] == leg["id"] and g["best_price_2"]]
+        prices = [g["best_total_2"] for g in grid if g["leg"] == leg["id"] and g["best_total_2"]]
         if prices:
             history.append({"run_date": day, "series": leg["id"], "total_2": min(prices)})
     HISTORY.parent.mkdir(exist_ok=True)
