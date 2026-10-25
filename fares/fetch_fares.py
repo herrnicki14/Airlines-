@@ -161,6 +161,7 @@ def finish(row, leg, rank=None):
     bags, note = bag_cost_2(row)
     out = {**row, "leg_label": leg["label"], "fare": fare_label(row),
            "bags_2": bags, "total_2": row["price_2"] + (bags or 0),
+           "total_pp": round((row["price_2"] + (bags or 0)) / ADULTS, 2),
            "preferred_date": row["date"] in leg["preferred"], "note": note}
     if rank is not None:
         out["rank"] = rank
@@ -254,6 +255,7 @@ def build_itineraries(searcher, best_by_leg, now):
             "fare_2": sum(r["price_2"] for r in rows),
             "bags_2": sum(r["bags_2"] or 0 for r in rows),
             "total_2": sum(r["total_2"] for r in rows),
+            "total_pp": round(sum(r["total_2"] for r in rows) / ADULTS, 2),
         })
 
     cheapest = [(best_by_leg[l["id"]]["ranked"] or [None])[0] for l in legs]
@@ -284,6 +286,7 @@ def build_itineraries(searcher, best_by_leg, now):
                 "leg2": cheapest[1]["date"], "leg3": cheapest[2]["date"],
                 "fare_2": best["price"], "bags_2": bags,
                 "total_2": best["price"] + (bags or 0),
+                "total_pp": round((best["price"] + (bags or 0)) / ADULTS, 2),
                 "vs_one_ways_2": best["price"] - one_ways,
             })
     return out
