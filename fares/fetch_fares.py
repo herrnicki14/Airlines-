@@ -3,7 +3,7 @@
 
 Calls SerpApi's Google Flights engine once per leg and date, with every
 airport of a leg in the same call, so a full run costs one search per date
-plus 1 multi-city price on American, Delta and United. Nonstop flights only
+plus 3 to price and list a multi-city ticket on American, Delta or United. Nonstop flights only
 and no basic economy, so every fare includes a carry-on and standard seat.
 
 Writes the dashboard's data files to fares/out/ and appends to
@@ -255,7 +255,25 @@ def build_itineraries(searcher, best_by_leg, now):
     add("best_value", "Best value (nonstops, preferred dates)",
         [best_value_pick(l, best_by_leg[l["id"]]["rows"], min_saving_2) for l in legs])
 
-    # One multi-city search on AA/DL/UA for the cheapest dates found above.
+    # Cheapest trip where all three one-ways are on the same airline.
+    by_airline = {}
+    for leg in legs:
+        for r in best_by_leg[leg["id"]]["rows"]:
+            if r["stops"] == 0:
+                key = (r["airline"], leg["id"])
+                if key not in by_airline or with_bags(r) < with_bags(by_airline[key]):
+                    by_airline[key] = r
+    same = []
+    for airline in {a for a, _ in by_airline}:
+        picks = [by_airline.get((airline, l["id"])) for l in legs]
+        if all(picks):
+            same.append((sum(with_bags(p) for p in picks), airline, picks))
+    if same:
+        _, airline, picks = min(same, key=lambda t: t[0])
+        add("one_airline", f"All on {airline} (three one-ways)", picks)
+
+    # One multi-city search on AA/DL/UA for the cheapest dates found above,
+    # then one search per later leg to see which flights the ticket uses.
     if all(cheapest):
         segments = []
         for leg, pick in zip(legs, cheapest):
@@ -263,24 +281,41 @@ def build_itineraries(searcher, best_by_leg, now):
             if leg.get("outbound_times"):
                 seg["times"] = leg["outbound_times"]
             segments.append(seg)
-        body = searcher.search(type=3, multi_city_json=json.dumps(segments), stops=STOPS, sort_by=2,
-                               exclude_basic="true", include_airlines=CONFIG["multi_city_airlines"])
-        prices = [i for i in body.get("best_flights", []) + body.get("other_flights", []) if i.get("price")]
-        if prices:
-            best = min(prices, key=lambda i: i["price"])
-            carriers = sorted({s.get("airline", "") for s in best.get("flights", [])})
+        params = dict(type=3, multi_city_json=json.dumps(segments), stops=STOPS, sort_by=2,
+                      exclude_basic="true", include_airlines=CONFIG["multi_city_airlines"])
+        chosen, token = [], None
+        for leg in legs:
+            body = searcher.search(**params, **({"departure_token": token} if token else {}))
+            items = [i for i in body.get("best_flights", []) + body.get("other_flights", []) if i.get("price")]
+            if not items:
+                break
+            pick = min(items, key=lambda i: i["price"])
+            chosen.append(pick)
+            token = pick.get("departure_token")
+            if not token:
+                break
+        if chosen:
+            price = chosen[-1]["price"]
+            segs = [seg for c in chosen for seg in c.get("flights", [])]
+            carriers = sorted({seg.get("airline", "") for seg in segs})
             fees = BAGS.get(carriers[0]) if len(carriers) == 1 else None
             bags = ADULTS * 3 * (fees["carry_on_pp"] + fees["checked_pp"]) if fees else None
             seats = ADULTS * 3 * fees["seat_pp"] if fees else None
-            one_ways = sum(c["price_2"] for c in cheapest)
+
+            def describe(c, date):
+                f = c["flights"]
+                dep, arr = f[0]["departure_airport"], f[-1]["arrival_airport"]
+                nxt = " +1" if arr["time"][:10] > dep["time"][:10] else ""
+                return (f"{date} · {' + '.join(sorted({x.get('airline', '') for x in f}))} "
+                        f"{', '.join(x.get('flight_number', '') for x in f)} · {dep['id']}–{arr['id']} "
+                        f"{dep['time'][11:16]}–{arr['time'][11:16]}{nxt}")
             out.append({
                 "kind": "multi_city", "label": f"Multi-city on {' + '.join(carriers)}",
-                "leg1": f"{cheapest[0]['date']} · first flight {best['flights'][0].get('flight_number', '')}",
-                "leg2": cheapest[1]["date"], "leg3": cheapest[2]["date"],
-                "fare_2": best["price"], "bags_2": bags, "seats_2": seats,
-                "total_2": best["price"] + (bags or 0) + (seats or 0),
-                "total_pp": round((best["price"] + (bags or 0) + (seats or 0)) / ADULTS, 2),
-                "vs_one_ways_2": best["price"] - one_ways,
+                **{leg["id"]: describe(c, pick["date"]) for leg, c, pick in zip(legs, chosen, cheapest)},
+                "fare_2": price, "bags_2": bags, "seats_2": seats,
+                "total_2": price + (bags or 0) + (seats or 0),
+                "total_pp": round((price + (bags or 0) + (seats or 0)) / ADULTS, 2),
+                "vs_one_ways_2": price - sum(c["price_2"] for c in cheapest),
             })
     return out
 

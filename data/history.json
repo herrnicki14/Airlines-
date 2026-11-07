@@ -28,5 +28,40 @@
   "run_date": "2026-10-25",
   "series": "leg3",
   "total_2": 490
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "cheapest",
+  "total_2": 1761
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "best_value",
+  "total_2": 2413
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "one_airline",
+  "total_2": 1761
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "multi_city",
+  "total_2": 1897
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "leg1",
+  "total_2": 673
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "leg2",
+  "total_2": 621
+ },
+ {
+  "run_date": "2026-11-07",
+  "series": "leg3",
+  "total_2": 467
  }
 ]
